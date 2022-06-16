@@ -6,7 +6,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
-
+from hazm import *
 import datasets
 import numpy as np
 import torch
@@ -28,6 +28,7 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
+normalizer = Normalizer()
 
 if is_apex_available():
     from apex import amp
@@ -134,7 +135,7 @@ class DataTrainingArguments:
         },
     )
     chars_to_ignore: List[str] = list_field(
-        default=[",", "?", ".", "!", "-", ";", ":", '""', "%", "'", '"', "�"],
+        default=[",", "?", ".", "!", "-", ";", ":", '""', "%", "'", '"', "�", "؟", "،", "«", "»", "؛"],
         metadata={"help": "A list of characters to remove from the transcripts."},
     )
 
@@ -308,18 +309,17 @@ def main():
     # train_dataset = datasets.load_dataset(
     #     "common_voice", "fa", split="train[:20%]+test[:20%]"
     # )
+
     train_dataset = datasets.load_dataset(
         "common_voice", "fa", split="train[:50%]+test[:50%]"
     )
     eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:50%]")
-    print(len(train_dataset))
-    print(len(train_dataset))
-    print(len(eval_dataset))
-    print(len(eval_dataset))
-    # exit()
+    f = open("data/train.txt", mode="w", encoding="utf-8")
+    for tr in train_dataset:
+        f.write(normalizer.normalize(tr["sentence"])+"\n")
     # Create and save tokenizer
     chars_to_ignore_regex = f'[{"".join(data_args.chars_to_ignore)}]'
-
+    exit()
     def remove_special_characters(batch):
         batch["text"] = re.sub(chars_to_ignore_regex, "", batch["sentence"]).lower() + " "
         return batch
