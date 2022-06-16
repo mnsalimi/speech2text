@@ -29,7 +29,7 @@ from transformers import (
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
 normalizer = Normalizer()
-
+cahrs_ignore = [",", "?", ".", "!", "-", ";", ":", '""', "%", "'", '"', "�", "؟", "،", "«", "»", "؛"]
 if is_apex_available():
     from apex import amp
 
@@ -311,12 +311,22 @@ def main():
     # )
 
     train_dataset = datasets.load_dataset(
-        "common_voice", "fa", split="train[:50%]+test[:50%]"
+        "common_voice", "fa", split="train+test"
     )
-    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:50%]")
+    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test")
     f = open("data/train.txt", mode="w", encoding="utf-8")
     for tr in train_dataset:
-        f.write(normalizer.normalize(tr["sentence"])+"\n")
+        txt = normalizer.normalize(tr["sentence"])
+        for ch in cahrs_ignore:
+            txt = txt.replace(ch, " ")
+            txt = txt.strip().rstrip().lstrip()
+        f.write(txt+"\n")
+    for tr in eval_dataset:
+        txt = normalizer.normalize(tr["sentence"])
+        for ch in cahrs_ignore:
+            txt = txt.replace(ch, " ")
+            txt = txt.strip().rstrip().lstrip()
+        f.write(txt+"\n")
     # Create and save tokenizer
     chars_to_ignore_regex = f'[{"".join(data_args.chars_to_ignore)}]'
     exit()
