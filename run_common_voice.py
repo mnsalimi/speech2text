@@ -305,11 +305,18 @@ def main():
     set_seed(training_args.seed)
 
     # Get the datasets:
+    # train_dataset = datasets.load_dataset(
+    #     "common_voice", "fa", split="train[:20%]+test[:20%]"
+    # )
     train_dataset = datasets.load_dataset(
-        "common_voice", "fa", split="train+test"
+        "common_voice", "fa", split="train[:50%]+test[:50%]"
     )
-    eval_dataset = datasets.load_dataset("common_voice", data_args.dataset_config_name, split="test")
-
+    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:50%]")
+    print(len(train_dataset))
+    print(len(train_dataset))
+    print(len(eval_dataset))
+    print(len(eval_dataset))
+    # exit()
     # Create and save tokenizer
     chars_to_ignore_regex = f'[{"".join(data_args.chars_to_ignore)}]'
 
@@ -365,10 +372,6 @@ def main():
         feature_size=1, sampling_rate=16_000, padding_value=0.0, do_normalize=True, return_attention_mask=True
     )
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    print(dir_path)
-    print(dir_path)
-    print(dir_path)
-    print(dir_path)
     dir_path = os.path.join(dir_path, "model")
     processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=tokenizer)
     model = Wav2Vec2ForCTC.from_pretrained(
@@ -395,8 +398,6 @@ def main():
         eval_dataset = eval_dataset.select(range(data_args.max_val_samples))
 
     resampler = torchaudio.transforms.Resample(48_000, 16_000)
-    print(111111111111111111111111)
-    print(111111111111111111111111)
 
     # Preprocessing the datasets.
     # We need to read the aduio files as arrays and tokenize the targets.
@@ -407,10 +408,7 @@ def main():
         batch["sampling_rate"] = 16_000
         batch["target_text"] = batch["text"]
         return batch
-    print(len(train_dataset))
-    print(len(train_dataset))
-    print(len(eval_dataset))
-    print(len(eval_dataset))
+  
     train_dataset = train_dataset.map(
         speech_file_to_array_fn,
         remove_columns=train_dataset.column_names,
@@ -421,7 +419,6 @@ def main():
         remove_columns=eval_dataset.column_names,
         num_proc=data_args.preprocessing_num_workers,
     )
-    print(111111111111111111111111)
 
     def prepare_dataset(batch):
         # check that all files have the correct sampling rate
