@@ -28,7 +28,7 @@ class FiveGram:
     def create_ngrams_tokens(self):
         # self.fivegrams = []
         for line in self.train:
-            line = line.split(" ")
+            line = line.split()
             line[0:0] = self.paddings_start
             line[len(line):len(line)] = self.paddings_end
             fourgrams = ngrams(line, 4)
@@ -41,25 +41,29 @@ class FiveGram:
             pickle.dump(self.freqs, f)
         with open("ngram_models/vocabs.pickle", "wb") as f:
             pickle.dump(self.vocabs, f)
+
     def predict(self, text):
-        text = text.split(" ")
-        text[0:0] = self.paddings_start
+        text = text.split()
+        pad_size = 0 if len(text)>4 else 4 - len(text)
+        # print(pad_size)
+        text[0:0] = self.paddings_start[:pad_size]
+        # print(text)
         probs = {}
         for token in self.vocabs:
             probs[' '.join(text+[token])] = float(
-                (1+self.freqs.get(' '.join(text[-4:])+" "+token, 0)) / (len(self.vocabs)+self.freqs[' '.join(text[-4:])])
+                (1+self.freqs.get(' '.join(text[-4:])+" "+token, 0)) / (len(self.vocabs)+self.freqs.get(' '.join(text[-4:]), 0))
             )
-        return max(probs, key=probs.get).split(" ")[-1]
+        return ' '.join(text[5:] + [max(probs, key=probs.get).split()[-1]])
 
 # t1 = time()
-text = "با دویست و ده میلیون دلار"
-fivegram = FiveGram()
-# t2 = time()
-# print(t2-t1)
-# fivegram.create_ngrams_tokens()
-t3 = time()
-# print(t3-t2)
-x = fivegram.predict(text)
-t4 = time()
-print(x)
-print(t4-t3)
+# text = "با"
+# fivegram = FiveGram()
+# # t2 = time()
+# # print(t2-t1)
+# # fivegram.create_ngrams_tokens()
+# t3 = time()
+# # print(t3-t2)
+# x = fivegram.predict(text)
+# t4 = time()
+# print(x)
+# print(t4-t3)

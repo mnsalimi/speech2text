@@ -13,7 +13,7 @@ import torch
 import torchaudio
 from packaging import version
 from torch import nn
-
+from ngrams import FiveGram 
 import transformers
 from transformers import (
     HfArgumentParser,
@@ -27,7 +27,7 @@ from transformers import (
     set_seed,
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
-
+fivegram = FiveGram()
 normalizer = Normalizer()
 cahrs_ignore = [",", "?", ".", "!", "-", ";", ":", '""', "%", "'", '"', "�", "؟", "،", "«", "»", "؛"]
 if is_apex_available():
@@ -293,14 +293,14 @@ def main():
     logger.setLevel(logging.INFO if is_main_process(training_args.local_rank) else logging.WARN)
 
     # Log on each process the small summary:
-    logger.warning(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
-    )
+    # logger.warning(
+    #     f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
+    #     + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
+    # )
     # Set the verbosity to info of the Transformers logger (on main process only):
     if is_main_process(training_args.local_rank):
         transformers.utils.logging.set_verbosity_info()
-    logger.info("Training/evaluation parameters %s", training_args)
+    # logger.info("Training/evaluation parameters %s", training_args)
 
     # Set seed before initializing model.
     set_seed(training_args.seed)
@@ -311,25 +311,25 @@ def main():
     # )
 
     train_dataset = datasets.load_dataset(
-        "common_voice", "fa", split="train+test"
+        "common_voice", "fa", split="train[:20%]"
     )
-    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test")
-    f = open("data/train.txt", mode="w", encoding="utf-8")
-    for tr in train_dataset:
-        txt = normalizer.normalize(tr["sentence"])
-        for ch in cahrs_ignore:
-            txt = txt.replace(ch, " ")
-            txt = txt.strip().rstrip().lstrip()
-        f.write(txt+"\n")
-    for tr in eval_dataset:
-        txt = normalizer.normalize(tr["sentence"])
-        for ch in cahrs_ignore:
-            txt = txt.replace(ch, " ")
-            txt = txt.strip().rstrip().lstrip()
-        f.write(txt+"\n")
+    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:20%]")
+    # f = open("data/train.txt", mode="w", encoding="utf-8")
+    # for tr in train_dataset:
+    #     txt = normalizer.normalize(tr["sentence"])
+    #     for ch in cahrs_ignore:
+    #         txt = txt.replace(ch, " ")
+    #         txt = txt.strip().rstrip().lstrip()
+    #     f.write(txt+"\n")
+    # for tr in eval_dataset:
+    #     txt = normalizer.normalize(tr["sentence"])
+    #     for ch in cahrs_ignore:
+    #         txt = txt.replace(ch, " ")
+    #         txt = txt.strip().rstrip().lstrip()
+    #     f.write(txt+"\n")
     # Create and save tokenizer
     chars_to_ignore_regex = f'[{"".join(data_args.chars_to_ignore)}]'
-    exit()
+    # exit()
     def remove_special_characters(batch):
         batch["text"] = re.sub(chars_to_ignore_regex, "", batch["sentence"]).lower() + " "
         return batch
@@ -460,6 +460,7 @@ def main():
     wer_metric = datasets.load_metric("wer")
 
     def compute_metrics(pred):
+        # print("HEREEEEEEE::::")
         pred_logits = pred.predictions
         pred_ids = np.argmax(pred_logits, axis=-1)
 
@@ -468,7 +469,32 @@ def main():
         pred_str = processor.batch_decode(pred_ids)
         # we do not want to group tokens when computing the metrics
         label_str = processor.batch_decode(pred.label_ids, group_tokens=False)
-
+        # print("HEREEEEEEEE")
+        # print("HEREEEEEEEE")
+        for i in range(len(pred_str)):
+            pred_tokens = pred_str[i].split()
+            for j in range(len(pred_tokens)):
+                pred_tokens = pred_str[i].split()
+                if pred_tokens[j] not in fivegram.vocabs:
+                    # print("text:")
+                    # print(pred_tokens)
+                    # print("before:")
+                    # print(pred_tokens[:j+1])
+                    # print(pred_tokens[j])
+                    x = fivegram.predict(' '.join(pred_tokens[:j]))
+                    # print("correct sentence: ")
+                    # print(x)
+                    # print("after:" + ' '.join(pred_tokens[j+1:]))
+                    # print(pred_str[i])
+                    # print(pred_tokens[:j])
+                    # print("final")
+                    pred_str[i] = x + ' ' + ' '.join(pred_tokens[j+1:])
+                    # print(pred_str[i])
+                    # print(pred_str[i])
+                    # print("end")
+            # print(pred_str[i])
+            # print(label_str[i])
+        # exit()
         wer = wer_metric.compute(predictions=pred_str, references=label_str)
 
         return {"wer": wer}
