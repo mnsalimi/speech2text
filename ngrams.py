@@ -42,28 +42,43 @@ class FiveGram:
         with open("ngram_models/vocabs.pickle", "wb") as f:
             pickle.dump(self.vocabs, f)
 
-    def predict(self, text):
-        text = text.split()
-        pad_size = 0 if len(text)>4 else 4 - len(text)
-        # print(pad_size)
-        text[0:0] = self.paddings_start[:pad_size]
-        # print(text)
+    def predict(self, tokens, index):
+        pad_size = 0 if index>4 else 4 - index
+        print(pad_size)
+        index += pad_size
+        tokens[0:0] = self.paddings_start[:pad_size]
+        print("tokens: ", str(tokens))
+        print("index: ", str(index))
         probs = {}
+        makhraj_str = ' '.join(tokens[index-4:index])
+        print("makhraj_str: ", makhraj_str)
+        cc = 0
         for token in self.vocabs:
-            probs[' '.join(text+[token])] = float(
-                (1+self.freqs.get(' '.join(text[-4:])+" "+token, 0)) / (len(self.vocabs)+self.freqs.get(' '.join(text[-4:]), 0))
+            soorat_str = ' '.join(tokens[index-4:index])+" "+token
+            print("soorat_str:", str(soorat_str))
+            val = float(
+                (1+self.freqs.get(soorat_str, 0))
+                /
+                (len(self.vocabs)+self.freqs.get(makhraj_str, 0))
             )
-        return ' '.join(text[5:] + [max(probs, key=probs.get).split()[-1]])
+            print(val)
+            # exit()
+            probs[' '.join(tokens[:index]+[token])] = val
+            cc += 1
+            if cc == 5:
+                exit()
+        re = [max(probs, key=probs.get).split()[-1]]
+        return tokens[:index] + re + tokens[index+1:] 
 
-# t1 = time()
-# text = "با"
-# fivegram = FiveGram()
-# # t2 = time()
-# # print(t2-t1)
-# # fivegram.create_ngrams_tokens()
-# t3 = time()
-# # print(t3-t2)
-# x = fivegram.predict(text)
-# t4 = time()
-# print(x)
-# print(t4-t3)
+t1 = time()
+text = "دویست و ده میلیون دلار"
+fivegram = FiveGram()
+# t2 = time()
+# print(t2-t1)
+# fivegram.create_ngrams_tokens()
+t3 = time()
+# print(t3-t2)
+x = fivegram.predict(text.split(), 3)
+t4 = time()
+print(x)
+print(t4-t3)

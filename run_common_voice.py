@@ -315,11 +315,17 @@ def main():
     )
     eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:20%]")
     # f = open("data/train.txt", mode="w", encoding="utf-8")
-    # for tr in train_dataset:
-    #     txt = normalizer.normalize(tr["sentence"])
-    #     for ch in cahrs_ignore:
-    #         txt = txt.replace(ch, " ")
-    #         txt = txt.strip().rstrip().lstrip()
+    for i in range(len(train_dataset)):
+        train_dataset[i]["sentence"] = normalizer.normalize(train_dataset[i]["sentence"])
+        for ch in cahrs_ignore:
+            train_dataset[i]["sentence"] = train_dataset[i]["sentence"].replace(ch, " ")
+            train_dataset[i]["sentence"] = train_dataset[i]["sentence"].strip().rstrip().lstrip()
+            
+    for i in range(len(eval_dataset)):
+        eval_dataset[i]["sentence"] = normalizer.normalize(eval_dataset[i]["sentence"])
+        for ch in cahrs_ignore:
+            eval_dataset[i]["sentence"] =  val_dataset[i]["sentence"].replace(ch, " ")
+             eval_dataset[i]["sentence"] = eval_dataset[i]["sentence"].strip().rstrip().lstrip()
     #     f.write(txt+"\n")
     # for tr in eval_dataset:
     #     txt = normalizer.normalize(tr["sentence"])
