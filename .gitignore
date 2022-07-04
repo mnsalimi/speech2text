@@ -1,3 +1,4 @@
 env
 wav2vec2-large-xlsr-fa-demo
 model
+__pycache__
