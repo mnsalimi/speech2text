@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from email import header
 import json
 import logging
 import os
@@ -310,38 +311,47 @@ def main():
     #     "common_voice", "fa", split="train[:20%]+test[:20%]"
     # )
 
+    # train_dataset = datasets.load_dataset(
+    #     "common_voice", "fa", split="train[:20%]"
+    # )
+    # print(1)
     train_dataset = datasets.load_dataset(
-        "common_voice", "fa", split="train[:20%]"
+        "csv", data_files="data/audio/tejarat.csv", column_names=["path", "sentence"], split="train"
     )
-    eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:20%]")
+    eval_dataset = datasets.load_dataset(
+        "csv", data_files="data/audio/tejarat.csv", column_names=["path", "sentence"], split="train"
+    )
+    # eval_dataset = eval_dataset["train"]
+    # print(type(train_dataset))
+    # print("train_dataset", train_dataset[0])
+    # print("eval_dataset", eval_dataset[0])
+    # print(eval_dataset["train"][0])
+    # exit()
+    # eval_dataset = datasets.load_dataset("common_voice", "fa", split="test[:20%]")
     # f = open("data/train.txt", mode="w", encoding="utf-8")
-    for i in range(len(train_dataset)):
-        train_dataset[i]["sentence"] = normalizer.normalize(train_dataset[i]["sentence"])
-        for ch in cahrs_ignore:
-            train_dataset[i]["sentence"] = train_dataset[i]["sentence"].replace(ch, " ")
-            train_dataset[i]["sentence"] = train_dataset[i]["sentence"].strip().rstrip().lstrip()
-            
-    for i in range(len(eval_dataset)):
-        eval_dataset[i]["sentence"] = normalizer.normalize(eval_dataset[i]["sentence"])
-        for ch in cahrs_ignore:
-            eval_dataset[i]["sentence"] =  val_dataset[i]["sentence"].replace(ch, " ")
-             eval_dataset[i]["sentence"] = eval_dataset[i]["sentence"].strip().rstrip().lstrip()
-    #     f.write(txt+"\n")
-    # for tr in eval_dataset:
-    #     txt = normalizer.normalize(tr["sentence"])
+    # for i in range(len(train_dataset)):
+    #     train_dataset[i]["sentence"] = normalizer.normalize(train_dataset[i]["sentence"])
     #     for ch in cahrs_ignore:
-    #         txt = txt.replace(ch, " ")
-    #         txt = txt.strip().rstrip().lstrip()
-    #     f.write(txt+"\n")
-    # Create and save tokenizer
+    #         train_dataset[i]["sentence"] = train_dataset[i]["sentence"].replace(ch, " ")
+    #         train_dataset[i]["sentence"] = train_dataset[i]["sentence"].strip().rstrip().lstrip()
+            
+    # for i in range(len(eval_dataset)):
+    #     eval_dataset[i]["sentence"] = normalizer.normalize(eval_dataset[i]["sentence"])
+    #     for ch in cahrs_ignore:
+    #         eval_dataset[i]["sentence"] =  eval_dataset[i]["sentence"].replace(ch, " ")
+    #         eval_dataset[i]["sentence"] = eval_dataset[i]["sentence"].strip().rstrip().lstrip()
+    # eval_dataset[0]["sentence"] = "SSASAS"
+    # print("__eval___: ", eval_dataset[0]["sentence"])
     chars_to_ignore_regex = f'[{"".join(data_args.chars_to_ignore)}]'
     # exit()
+    
     def remove_special_characters(batch):
         batch["text"] = re.sub(chars_to_ignore_regex, "", batch["sentence"]).lower() + " "
         return batch
-
+    print("train_dataset111: ", train_dataset)
     train_dataset = train_dataset.map(remove_special_characters, remove_columns=["sentence"])
     eval_dataset = eval_dataset.map(remove_special_characters, remove_columns=["sentence"])
+    print("train_dataset222: ", train_dataset)
 
     def extract_all_chars(batch):
         all_text = " ".join(batch["text"])
@@ -355,6 +365,7 @@ def main():
         keep_in_memory=True,
         remove_columns=train_dataset.column_names,
     )
+
     vocab_test = train_dataset.map(
         extract_all_chars,
         batched=True,
@@ -388,23 +399,26 @@ def main():
         feature_size=1, sampling_rate=16_000, padding_value=0.0, do_normalize=True, return_attention_mask=True
     )
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    dir_path = os.path.join(dir_path, "model")
-    processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=tokenizer)
-    model = Wav2Vec2ForCTC.from_pretrained(
-        # model_args.model_name_or_path,
-        dir_path,
-        cache_dir=model_args.cache_dir,
-        activation_dropout=model_args.activation_dropout,
-        attention_dropout=model_args.attention_dropout,
-        hidden_dropout=model_args.hidden_dropout,
-        feat_proj_dropout=model_args.feat_proj_dropout,
-        mask_time_prob=model_args.mask_time_prob,
-        gradient_checkpointing=training_args.gradient_checkpointing,
-        layerdrop=model_args.layerdrop,
-        ctc_loss_reduction="mean",
-        pad_token_id=processor.tokenizer.pad_token_id,
-        vocab_size=len(processor.tokenizer),
-    )
+    dir_path = os.path.join(dir_path, "mehrdad")
+    processor = Wav2Vec2Processor.from_pretrained("mehrdad")
+    model = Wav2Vec2ForCTC.from_pretrained("mehrdad").to("cuda")
+
+    # processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=tokenizer)
+    # model = Wav2Vec2ForCTC.from_pretrained(
+    #     # model_args.model_name_or_path,
+    #     dir_path,
+    #     cache_dir=model_args.cache_dir,
+    #     activation_dropout=model_args.activation_dropout,
+    #     attention_dropout=model_args.attention_dropout,
+    #     hidden_dropout=model_args.hidden_dropout,
+    #     feat_proj_dropout=model_args.feat_proj_dropout,
+    #     mask_time_prob=model_args.mask_time_prob,
+    #     gradient_checkpointing=training_args.gradient_checkpointing,
+    #     layerdrop=model_args.layerdrop,
+    #     ctc_loss_reduction="mean",
+    #     pad_token_id=processor.tokenizer.pad_token_id,
+    #     vocab_size=22,
+    # )
 
     if data_args.max_train_samples is not None:
         max_train_samples = min(len(train_dataset), data_args.max_train_samples)
@@ -470,34 +484,24 @@ def main():
         pred_logits = pred.predictions
         pred_ids = np.argmax(pred_logits, axis=-1)
 
-        pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
+        # print("pred_id_old: ", pred.label_ids)
+        # pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
+        # print("processor.tokenizer.pad_token_id: ", processor.tokenizer.pad_token_id)
+        # print("label_id: ", pred_ids)
+        # print("pred_id: ", pred.label_ids)
 
         pred_str = processor.batch_decode(pred_ids)
         # we do not want to group tokens when computing the metrics
         label_str = processor.batch_decode(pred.label_ids, group_tokens=False)
-        # print("HEREEEEEEEE")
-        # print("HEREEEEEEEE")
-        for i in range(len(pred_str)):
-            pred_tokens = pred_str[i].split()
-            for j in range(len(pred_tokens)):
-                pred_tokens = pred_str[i].split()
-                if pred_tokens[j] not in fivegram.vocabs:
-                    # print("text:")
-                    # print(pred_tokens)
-                    # print("before:")
-                    # print(pred_tokens[:j+1])
-                    # print(pred_tokens[j])
-                    x = fivegram.predict(pred_tokens, j)
-                    # print("correct sentence: ")
-                    # print(x)
-                    # print("after:" + ' '.join(pred_tokens[j+1:]))
-                    # print(pred_str[i])
-                    # print(pred_tokens[:j])
-                    # print("final")
-                    pred_str[i] = ' '.join(x)
-                    # print(pred_str[i])
-                    # print(pred_str[i])
-                    # print("end")
+        print("label_str: ", label_str)
+        print("pred_str: ", pred_str)
+        # for i in range(len(pred_str)):
+        #     pred_tokens = pred_str[i].split()
+        #     for j in range(len(pred_tokens)):
+        #         pred_tokens = pred_str[i].split()
+        #         if pred_tokens[j] not in fivegram.vocabs:
+        #             x = fivegram.predict(pred_tokens, j)
+        #             pred_str[i] = ' '.join(x)
             # print(pred_str[i])
             # print(label_str[i])
         # exit()
@@ -534,6 +538,7 @@ def main():
         # Save the feature_extractor and the tokenizer
         if is_main_process(training_args.local_rank):
             processor.save_pretrained(training_args.output_dir)
+        # print("eval_dataset5:::::", eval_dataset[0])
 
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
         trainer.save_model()
